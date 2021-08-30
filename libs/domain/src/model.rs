@@ -150,22 +150,18 @@ mod tests {
     #[test]
     fn prefers_current_stock_batches_to_shipments() {
         let in_stock_batch = Batch::new(
-            "in-stock-batch".to_owned(), 
+            "in-stock-batch".to_owned(),
             "RETRO-CLOCK".to_owned(),
             100,
-            chrono::Utc::today()
+            chrono::Utc::today(),
         );
         let shipment_batch = Batch::new(
             "shipment-batch".to_owned(),
             "RETRO-CLOCK".to_owned(),
             100,
-            tomorrow()
+            tomorrow(),
         );
-        let line = OrderLine::new(
-            "oref".to_owned(),
-            "RETRO-CLOCK".to_owned(),
-            10
-        );
+        let line = OrderLine::new("oref".to_owned(), "RETRO-CLOCK".to_owned(), 10);
 
         let batches = vec![in_stock_batch, shipment_batch];
         allocate(line, &mut [in_stock_batch, shipment_batch]);
