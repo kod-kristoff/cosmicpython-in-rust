@@ -49,6 +49,16 @@ impl Batch {
     }
 }
 
+pub fn allocate(line: OrderLine, batches: &mut [Batch]) -> Option<&str> {
+    for batch in batches {
+        if batch.can_allocate(&line) {
+            batch.allocate(line);
+            return Some(&batch.reference);
+        }
+    }
+    None
+}
+
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct OrderLine {
     orderid: String,
@@ -85,6 +95,10 @@ mod tests {
             ),
             OrderLine::new("order-123".to_owned(), sku.to_owned(), line_qty),
         )
+    }
+
+    fn tomorrow() -> chrono::Date<chrono::Utc> {
+        chrono::Utc::today() + chrono::Duration::days(1)
     }
 
     #[test]
@@ -131,5 +145,32 @@ mod tests {
         batch.allocate(line.clone());
         batch.allocate(line);
         assert_eq!(batch.available_quantity(), 18)
+    }
+
+    #[test]
+    fn prefers_current_stock_batches_to_shipments() {
+        let in_stock_batch = Batch::new(
+            "in-stock-batch".to_owned(), 
+            "RETRO-CLOCK".to_owned(),
+            100,
+            chrono::Utc::today()
+        );
+        let shipment_batch = Batch::new(
+            "shipment-batch".to_owned(),
+            "RETRO-CLOCK".to_owned(),
+            100,
+            tomorrow()
+        );
+        let line = OrderLine::new(
+            "oref".to_owned(),
+            "RETRO-CLOCK".to_owned(),
+            10
+        );
+
+        let batches = vec![in_stock_batch, shipment_batch];
+        allocate(line, &mut [in_stock_batch, shipment_batch]);
+
+        assert_eq!(in_stock_batch.available_quantity(), 90);
+        assert_eq!(shipment_batch.available_quantity(), 100);
     }
 }
