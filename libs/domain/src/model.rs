@@ -163,10 +163,10 @@ mod tests {
         );
         let line = OrderLine::new("oref".to_owned(), "RETRO-CLOCK".to_owned(), 10);
 
-        let batches = vec![in_stock_batch, shipment_batch];
-        allocate(line, &mut [in_stock_batch, shipment_batch]);
+        let mut batches = vec![in_stock_batch, shipment_batch];
+        allocate(line, &mut batches);
 
-        assert_eq!(in_stock_batch.available_quantity(), 90);
-        assert_eq!(shipment_batch.available_quantity(), 100);
+        assert_eq!(batches[0].available_quantity(), 90);
+        assert_eq!(batches[1].available_quantity(), 100);
     }
 }
