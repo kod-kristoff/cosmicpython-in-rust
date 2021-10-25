@@ -184,7 +184,10 @@ mod tests {
         let mut batches = vec![batch];
         allocate(line, &mut batches);
 
-        let res = allocate(OrderLine::new("order2".to_owned(), "SMALL-FORK".to_owned(), 1), &mut batches);
+        let res = allocate(
+            OrderLine::new("order2".to_owned(), "SMALL-FORK".to_owned(), 1),
+            &mut batches,
+        );
         assert_eq!(res, Response::OutOfStock("SMALL-FORK".to_owned()));
     }
 }
