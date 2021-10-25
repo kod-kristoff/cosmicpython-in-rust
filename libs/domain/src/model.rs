@@ -49,14 +49,20 @@ impl Batch {
     }
 }
 
-pub fn allocate(line: OrderLine, batches: &mut [Batch]) -> Option<&str> {
+pub fn allocate(line: OrderLine, batches: &mut [Batch]) -> Response {
     for batch in batches {
         if batch.can_allocate(&line) {
             batch.allocate(line);
-            return Some(&batch.reference);
+            return Response::Ok(&batch.reference);
         }
     }
-    None
+    Response::OutOfStock(line.sku.clone())
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Response<'a> {
+    Ok(&'a str),
+    OutOfStock(String),
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
@@ -164,9 +170,21 @@ mod tests {
         let line = OrderLine::new("oref".to_owned(), "RETRO-CLOCK".to_owned(), 10);
 
         let mut batches = vec![in_stock_batch, shipment_batch];
-        allocate(line, &mut batches);
+        let res = allocate(line, &mut batches);
+
+        assert_eq!(res, Response::Ok("in-stock-batch"));
 
         assert_eq!(batches[0].available_quantity(), 90);
         assert_eq!(batches[1].available_quantity(), 100);
+    }
+
+    #[test]
+    fn allocate_returns_outofstock_if_cannot_allocate() {
+        let (batch, line) = make_batch_and_line("SMALL-FORK", 10, 10);
+        let mut batches = vec![batch];
+        allocate(line, &mut batches);
+
+        let res = allocate(OrderLine::new("order2".to_owned(), "SMALL-FORK".to_owned(), 1), &mut batches);
+        assert_eq!(res, Response::OutOfStock("SMALL-FORK".to_owned()));
     }
 }
