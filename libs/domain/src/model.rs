@@ -56,7 +56,7 @@ pub fn allocate(line: OrderLine, batches: &mut [Batch]) -> Response {
             return Response::Ok(&batch.reference);
         }
     }
-    Response::OutOfStock(line.sku.clone())
+    Response::OutOfStock(line.sku)
 }
 
 #[derive(Debug, PartialEq)]
