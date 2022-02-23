@@ -6,7 +6,7 @@ async fn test_orm() {
 }
 
 async fn setup_db() -> DatabaseConnection {
-    let db = Database::connect("sqlite://:memory:")
+    let db = Database::connect("sqlite::memory:")
         .await
         .expect("Failed to connect to db");
     db
