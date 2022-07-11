@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sqlx = { version = "^0.5", features = ["sqlite", "runtime-tokio-rustls"], default-features = false }
-tokio = { version = "^1.17", features = ["rt-multi-thread", "macros"] }
+sqlx = { version = "^0.6", features = ["sqlite", "runtime-tokio-rustls", "chrono"], default-features = false }
+tokio = { version = "^1.19", features = ["rt-multi-thread", "macros"] }
 domain = { path = "../domain" }
 chrono = "*"
+futures-util = "*"

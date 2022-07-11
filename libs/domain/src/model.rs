@@ -4,13 +4,18 @@ use std::collections;
 pub struct Batch {
     reference: String,
     sku: String,
-    eta: chrono::Date<chrono::Utc>,
+    eta: Option<chrono::DateTime<chrono::Utc>>,
     purchased_quantity: u32,
     allocations: collections::HashSet<OrderLine>,
 }
 
 impl Batch {
-    pub fn new(reference: String, sku: String, qty: u32, eta: chrono::Date<chrono::Utc>) -> Self {
+    pub fn new(
+        reference: String,
+        sku: String,
+        qty: u32,
+        eta: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Self {
         let allocations = collections::HashSet::new();
         Self {
             reference,
@@ -32,6 +37,21 @@ impl Batch {
         //    self.available_quantity -= line.qty;
     }
 
+    pub fn reference(&self) -> &str {
+        &self.reference
+    }
+
+    pub fn sku(&self) -> &str {
+        &self.sku
+    }
+
+    pub fn purchased_quantity(&self) -> u32 {
+        self.purchased_quantity
+    }
+
+    pub fn eta(&self) -> Option<&chrono::DateTime<chrono::Utc>> {
+        self.eta.as_ref()
+    }
     pub fn available_quantity(&self) -> u32 {
         self.purchased_quantity - self.allocated_quantity()
     }
@@ -97,14 +117,14 @@ mod tests {
                 "batch-001".to_owned(),
                 sku.to_owned(),
                 batch_qty,
-                chrono::Utc::today(),
+                Some(chrono::Utc::now()),
             ),
             OrderLine::new("order-123".to_owned(), sku.to_owned(), line_qty),
         )
     }
 
-    fn tomorrow() -> chrono::Date<chrono::Utc> {
-        chrono::Utc::today() + chrono::Duration::days(1)
+    fn tomorrow() -> Option<chrono::DateTime<chrono::Utc>> {
+        Some(chrono::Utc::now() + chrono::Duration::days(1))
     }
 
     #[test]
@@ -131,7 +151,7 @@ mod tests {
             "batch-001".to_owned(),
             "UNCOMFORTABLE-CHAIR".to_owned(),
             100,
-            chrono::Utc::today(),
+            Some(chrono::Utc::now()),
         );
         let different_sku_line =
             OrderLine::new("order-123".to_owned(), "EXPENSIVE-TOASTER".to_owned(), 10);
@@ -159,7 +179,7 @@ mod tests {
             "in-stock-batch".to_owned(),
             "RETRO-CLOCK".to_owned(),
             100,
-            chrono::Utc::today(),
+            Some(chrono::Utc::now()),
         );
         let shipment_batch = Batch::new(
             "shipment-batch".to_owned(),
