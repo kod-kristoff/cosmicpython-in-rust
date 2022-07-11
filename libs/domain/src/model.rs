@@ -26,6 +26,22 @@ impl Batch {
         }
     }
 
+    pub fn with_allocations(
+        reference: String,
+        sku: String,
+        qty: u32,
+        eta: Option<chrono::DateTime<chrono::Utc>>,
+        allocations: collections::HashSet<OrderLine>,
+    ) -> Self {
+        Self {
+            reference,
+            sku,
+            eta,
+            purchased_quantity: qty,
+            allocations,
+        }
+    }
+
     pub fn can_allocate(&self, line: &OrderLine) -> bool {
         self.sku == line.sku && self.available_quantity() >= line.qty
     }
@@ -52,6 +68,9 @@ impl Batch {
     pub fn eta(&self) -> Option<&chrono::DateTime<chrono::Utc>> {
         self.eta.as_ref()
     }
+    pub fn allocations(&self) -> &collections::HashSet<OrderLine> {
+        &self.allocations
+    }
     pub fn available_quantity(&self) -> u32 {
         self.purchased_quantity - self.allocated_quantity()
     }
@@ -66,6 +85,12 @@ impl Batch {
         if self.allocations.contains(&line) {
             self.allocations.remove(&line);
         }
+    }
+}
+
+impl PartialEq for Batch {
+    fn eq(&self, other: &Self) -> bool {
+        self.reference == other.reference
     }
 }
 
