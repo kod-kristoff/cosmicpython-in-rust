@@ -1,10 +1,11 @@
-use std::collections;
+use crate::Error;
+use std::{cmp::Ordering, collections};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Batch {
     reference: String,
     sku: String,
-    eta: Option<chrono::DateTime<chrono::Utc>>,
+    eta: Option<chrono::Date<chrono::Utc>>,
     purchased_quantity: u32,
     allocations: collections::HashSet<OrderLine>,
 }
@@ -14,7 +15,7 @@ impl Batch {
         reference: String,
         sku: String,
         qty: u32,
-        eta: Option<chrono::DateTime<chrono::Utc>>,
+        eta: Option<chrono::Date<chrono::Utc>>,
     ) -> Self {
         let allocations = collections::HashSet::new();
         Self {
@@ -30,7 +31,7 @@ impl Batch {
         reference: String,
         sku: String,
         qty: u32,
-        eta: Option<chrono::DateTime<chrono::Utc>>,
+        eta: Option<chrono::Date<chrono::Utc>>,
         allocations: collections::HashSet<OrderLine>,
     ) -> Self {
         Self {
@@ -65,7 +66,7 @@ impl Batch {
         self.purchased_quantity
     }
 
-    pub fn eta(&self) -> Option<&chrono::DateTime<chrono::Utc>> {
+    pub fn eta(&self) -> Option<&chrono::Date<chrono::Utc>> {
         self.eta.as_ref()
     }
     pub fn allocations(&self) -> &collections::HashSet<OrderLine> {
@@ -94,14 +95,31 @@ impl PartialEq for Batch {
     }
 }
 
-pub fn allocate(line: OrderLine, batches: &mut [Batch]) -> Response {
+pub fn sort_by_eta(a: &Batch, b: &Batch) -> Ordering {
+    if let Some(a_eta) = a.eta() {
+        if let Some(b_eta) = b.eta() {
+            return a_eta.cmp(b_eta);
+        } else {
+            return Ordering::Greater;
+        }
+    } else {
+        if b.eta().is_none() {
+            return Ordering::Equal;
+        } else {
+            return Ordering::Less;
+        }
+    }
+}
+pub fn allocate<'a>(line: OrderLine, batches: &'a mut [Batch]) -> Result<&'a str, Error> {
+    // let mut batches = batches.to_vec();
+    batches.sort_by(sort_by_eta);
     for batch in batches {
         if batch.can_allocate(&line) {
             batch.allocate(line);
-            return Response::Ok(&batch.reference);
+            return Ok(&batch.reference);
         }
     }
-    Response::OutOfStock(line.sku)
+    Err(Error::OutOfStock(line.sku))
 }
 
 #[derive(Debug, PartialEq)]
@@ -142,14 +160,14 @@ mod tests {
                 "batch-001".to_owned(),
                 sku.to_owned(),
                 batch_qty,
-                Some(chrono::Utc::now()),
+                Some(chrono::Utc::today()),
             ),
             OrderLine::new("order-123".to_owned(), sku.to_owned(), line_qty),
         )
     }
 
-    fn tomorrow() -> Option<chrono::DateTime<chrono::Utc>> {
-        Some(chrono::Utc::now() + chrono::Duration::days(1))
+    fn tomorrow() -> Option<chrono::Date<chrono::Utc>> {
+        Some(chrono::Utc::today() + chrono::Duration::days(1))
     }
 
     #[test]
@@ -176,7 +194,7 @@ mod tests {
             "batch-001".to_owned(),
             "UNCOMFORTABLE-CHAIR".to_owned(),
             100,
-            Some(chrono::Utc::now()),
+            Some(chrono::Utc::today()),
         );
         let different_sku_line =
             OrderLine::new("order-123".to_owned(), "EXPENSIVE-TOASTER".to_owned(), 10);
@@ -204,7 +222,7 @@ mod tests {
             "in-stock-batch".to_owned(),
             "RETRO-CLOCK".to_owned(),
             100,
-            Some(chrono::Utc::now()),
+            Some(chrono::Utc::today()),
         );
         let shipment_batch = Batch::new(
             "shipment-batch".to_owned(),
@@ -217,7 +235,7 @@ mod tests {
         let mut batches = vec![in_stock_batch, shipment_batch];
         let res = allocate(line, &mut batches);
 
-        assert_eq!(res, Response::Ok("in-stock-batch"));
+        assert_eq!(res, Ok("in-stock-batch"));
 
         assert_eq!(batches[0].available_quantity(), 90);
         assert_eq!(batches[1].available_quantity(), 100);
@@ -227,12 +245,12 @@ mod tests {
     fn allocate_returns_outofstock_if_cannot_allocate() {
         let (batch, line) = make_batch_and_line("SMALL-FORK", 10, 10);
         let mut batches = vec![batch];
-        allocate(line, &mut batches);
+        allocate(line, &mut batches).expect("");
 
         let res = allocate(
             OrderLine::new("order2".to_owned(), "SMALL-FORK".to_owned(), 1),
             &mut batches,
         );
-        assert_eq!(res, Response::OutOfStock("SMALL-FORK".to_owned()));
+        assert_eq!(res, Err(Error::OutOfStock("SMALL-FORK".to_owned())));
     }
 }

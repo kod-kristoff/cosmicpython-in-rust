@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use chrono::{Datelike, NaiveDate, NaiveDateTime};
 use domain::model;
 use sqlx::{sqlite::SqlitePool, Row};
 
@@ -20,7 +21,7 @@ impl SqlxRepository {
             .bind(batch.reference())
             .bind(batch.sku())
             .bind(batch.purchased_quantity())
-            .bind(batch.eta())
+            .bind(encode_date(batch.eta()))
             .execute(&self.pool)
             .await
             .expect("repositories/sqlx_batches: inserting batch");
@@ -49,7 +50,7 @@ impl SqlxRepository {
         let reference: String = row.try_get("reference").expect("");
         let sku: String = row.try_get("sku").unwrap();
         let purchased_quantity: u32 = row.try_get("_purchased_quantity").unwrap();
-        let eta: Option<chrono::DateTime<chrono::Utc>> = row.try_get("eta").unwrap();
+        let eta: Option<chrono::Date<chrono::Utc>> = decode_date(row.try_get("eta").unwrap());
 
         let mut allocations = HashSet::new();
         let allocation_rows = sqlx::query(ALLOCATIONS_QUERY)
@@ -65,4 +66,34 @@ impl SqlxRepository {
         }
         model::Batch::with_allocations(reference, sku, purchased_quantity, eta, allocations)
     }
+
+    pub async fn list(&self) -> Vec<model::Batch> {
+        const QUERY: &str = "
+            SELECT reference, sku, _purchased_quantity, eta
+            FROM batches
+        ";
+
+        sqlx::query(QUERY)
+            .fetch_all(&self.pool)
+            .await
+            .expect("")
+            .iter()
+            .map(|row| {
+                model::Batch::new(
+                    row.get("reference"),
+                    row.get("sku"),
+                    row.get("_purchased_quantity"),
+                    decode_date(row.get("eta")),
+                )
+            })
+            .collect()
+    }
+}
+
+fn encode_date(date: Option<&chrono::Date<chrono::Utc>>) -> Option<NaiveDate> {
+    date.map(|d| NaiveDate::from_ymd(d.year(), d.month(), d.day()))
+}
+
+fn decode_date(date: Option<NaiveDate>) -> Option<chrono::Date<chrono::Utc>> {
+    date.map(|d| chrono::Date::from_utc(d, chrono::Utc))
 }
